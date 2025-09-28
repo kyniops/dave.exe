@@ -100,8 +100,6 @@ def make_prank_window(idx):
         except Exception:
             pass
 
-    btn = tk.Button(w, text="Fermer", command=close_this, bg=BW_BTN_BG, fg=BW_BTN_FG)
-    btn.pack(side="bottom", pady=(0,6))
 
     def clignoter():
         if not getattr(w, "alive", True):
@@ -114,7 +112,7 @@ def make_prank_window(idx):
         try:
             w.configure(bg=bg)
             msg.configure(bg=bg, fg=fg)
-            btn.configure(bg=bbg, fg=bfg)
+
         except Exception:
             pass
         w.after(450, clignoter)
