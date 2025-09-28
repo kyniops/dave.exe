@@ -1,6 +1,6 @@
-README — dave.exe (prank noir & blanc)
+README — dave.exe
+Note importante : utilise ce programme uniquement sur ta machine ou avec l’accord explicite de la personne ciblée. Ne cause pas de panique ni de perte de travail non sauvegardé — reste responsable. ⚠️
 
-Langue : Français
-But : petit prank inoffensif qui ouvre plusieurs fenêtres clignotantes, les fait bouger et peut jouer une boucle musicale. Conçu pour être empaqueté en .exe avec PyInstaller.
+Résumé rapide
 
-⚠️ Important — Légalité & éthique : n’exécute ce programme que sur ta propre machine ou avec l’autorisation explicite de la personne. Ne l’utilise pas sur des ordinateurs tiers sans accord — cela peut provoquer panique, perte de travail non sauvegardé ou être considéré comme une nuisance.
+dave.exe est un petit prank visuel : il ouvre des fenêtres Toplevel noires/blanches qui clignotent et bougent, joue éventuellement une boucle audio, et laisse un bouton Fermer sur chaque fenêtre. Le script est pensé pour être empaqueté en .exe avec PyInstaller et personnalisable en quelques variables.
