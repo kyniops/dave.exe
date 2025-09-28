@@ -1,7 +1,6 @@
 # main.py
 # Version noir & blanc — multiple fenêtres prank (inoffensif)
-# Lance directement sans UI principale
-# Compatible PyInstaller, musique "musique.mp3"
+# Compatible PyInstaller, musique "musique.mp3" (boucle), son par-fenêtre "musique2.mp3"
 
 import tkinter as tk
 import threading
@@ -20,26 +19,62 @@ if getattr(sys, 'frozen', False):
 else:
     app_path = os.path.dirname(os.path.abspath(__file__))
 
-MUSIC_FILE = os.path.join(app_path, "musique.mp3")
+MUSIC_FILE = os.path.join(app_path, "musique.mp3")     # musique de fond (boucle)
+MUSIC2_FILE = os.path.join(app_path, "musique2.mp3")   # son à jouer à chaque fenêtre
 
-# ---- Musique ----
+# ---- Musique / sons ----
 music_player = {"active": False}
+_sound2 = None
+
+def _no_audio_play(func_name, exc):
+    def f(*a, **k):
+        print(f"[{func_name}] impossible de lire le son :", exc, file=sys.stderr)
+    return f
+
 try:
     if USE_PYGAME:
         import pygame
         pygame.mixer.init()
-        if not os.path.isfile(MUSIC_FILE):
-            raise FileNotFoundError(f"{MUSIC_FILE} introuvable.")
-        pygame.mixer.music.load(MUSIC_FILE)
+        # musique de fond
+        if os.path.isfile(MUSIC_FILE):
+            try:
+                pygame.mixer.music.load(MUSIC_FILE)
+            except Exception as e:
+                print("Erreur chargement musique de fond:", e, file=sys.stderr)
+        # son par-fenêtre
+        if os.path.isfile(MUSIC2_FILE):
+            try:
+                _sound2 = pygame.mixer.Sound(MUSIC2_FILE)
+            except Exception as e:
+                print("Erreur chargement musique2:", e, file=sys.stderr)
+
         def play_music():
-            pygame.mixer.music.play(-1)
-            music_player["active"] = True
+            try:
+                if os.path.isfile(MUSIC_FILE):
+                    pygame.mixer.music.play(-1)
+                    music_player["active"] = True
+            except Exception as e:
+                print("Impossible de lire la musique de fond :", e, file=sys.stderr)
+                music_player["active"] = False
+
         def stop_music():
             try:
                 pygame.mixer.music.stop()
             except Exception:
                 pass
             music_player["active"] = False
+
+        def play_sound_once():
+            try:
+                if _sound2 is not None:
+                    ch = pygame.mixer.find_channel(True)
+                    ch.play(_sound2)
+                elif os.path.isfile(MUSIC2_FILE):
+                    tmp = pygame.mixer.Sound(MUSIC2_FILE)
+                    ch = pygame.mixer.find_channel(True)
+                    ch.play(tmp)
+            except Exception as e:
+                print("Impossible de jouer musique2 :", e, file=sys.stderr)
     else:
         import winsound
         def play_music():
@@ -49,24 +84,22 @@ try:
         def stop_music():
             winsound.PlaySound(None, winsound.SND_PURGE)
             music_player["active"] = False
+        def play_sound_once():
+            if os.path.isfile(MUSIC2_FILE):
+                winsound.PlaySound(MUSIC2_FILE, winsound.SND_FILENAME | winsound.SND_ASYNC)
 except Exception as e:
+    import sys as _sys
     def play_music():
-        print("Impossible de lire la musique :", e, file=sys.stderr)
+        print("Impossible de lire la musique de fond :", e, file=_sys.stderr)
         music_player["active"] = False
     def stop_music():
         music_player["active"] = False
+    def play_sound_once():
+        print("Impossible de jouer musique2 :", e, file=_sys.stderr)
 
-# ---- Initialisation tkinter (fenêtre principale cachée) ----
+# ---- UI principal (cachée) ----
 root = tk.Tk()
-root.title("dave.exe")
-root.geometry("1x1+0+0")  # petite fenêtre invisible
-root.overrideredirect(True)  # pas de bordures
-root.withdraw()  # cache la fenêtre principale
-
-BW_BG = "#000000"
-BW_FG = "#FFFFFF"
-BW_BTN_BG = "#FFFFFF"
-BW_BTN_FG = "#000000"
+root.withdraw()  # on cache la fenêtre principale
 
 open_windows = []
 spawning = {"active": False}
@@ -74,7 +107,7 @@ spawning = {"active": False}
 # ---- Fonctions ----
 def make_prank_window(idx):
     w = tk.Toplevel(root)
-    w.title("dave.exe")
+    w.title(f"dave.exe")
     w.geometry("360x110")
     w.resizable(False, False)
 
@@ -84,9 +117,10 @@ def make_prank_window(idx):
     w.geometry(f"+{x}+{y}")
 
     w_state = {"bg_black": True}
-    w.configure(bg=BW_BG)
+    w.configure(bg="#000000")
 
-    msg = tk.Label(w, text="⚠️𓆩×͜×𓆪ALERTE — Système infecté 𓆩×͜×𓆪⚠️", font=("Segoe UI", 14), bg=BW_BG, fg=BW_FG)
+    msg = tk.Label(w, text="⚠️𓆩×͜×𓆪ALERTE — Système infecté 𓆩×͜×𓆪⚠️", font=("Segoe UI", 14), 
+                   bg="#000000", fg="#FFFFFF")
     msg.pack(expand=True, pady=6)
 
     def close_this():
@@ -95,24 +129,24 @@ def make_prank_window(idx):
             open_windows.remove(w)
         except Exception:
             pass
-        try:
-            w.destroy()
-        except Exception:
-            pass
+        w.destroy()
 
+    btn = tk.Button(w, text="Fermer", command=close_this,
+                    bg="#FFFFFF", fg="#000000")
+    btn.pack(side="bottom", pady=(0,6))
 
     def clignoter():
         if not getattr(w, "alive", True):
             return
         w_state["bg_black"] = not w_state["bg_black"]
         if w_state["bg_black"]:
-            bg, fg, bbg, bfg = BW_BG, BW_FG, BW_BTN_BG, BW_BTN_FG
+            bg, fg, bbg, bfg = "#000000", "#FFFFFF", "#FFFFFF", "#000000"
         else:
-            bg, fg, bbg, bfg = BW_FG, BW_BG, BW_BG, BW_FG
+            bg, fg, bbg, bfg = "#FFFFFF", "#000000", "#000000", "#FFFFFF"
         try:
             w.configure(bg=bg)
             msg.configure(bg=bg, fg=fg)
-
+            btn.configure(bg=bbg, fg=bfg)
         except Exception:
             pass
         w.after(450, clignoter)
@@ -135,13 +169,18 @@ def make_prank_window(idx):
     w.alive = True
     clignoter()
     wiggle()
+
+    try:
+        threading.Thread(target=play_sound_once, daemon=True).start()
+    except Exception as e:
+        print("Erreur lors du play_sound_once:", e, file=sys.stderr)
+
     return w
 
 def spawn_windows(count=SPAWN_COUNT, interval_ms=SPAWN_INTERVAL_MS):
     if spawning["active"]:
         return
     spawning["active"] = True
-    # musique en thread pour ne pas bloquer la boucle Tk
     threading.Thread(target=play_music, daemon=True).start()
     created = 0
     def _spawn_step():
@@ -155,7 +194,7 @@ def spawn_windows(count=SPAWN_COUNT, interval_ms=SPAWN_INTERVAL_MS):
         root.after(interval_ms, _spawn_step)
     _spawn_step()
 
-def stop_all(event=None):
+def stop_all():
     spawning["active"] = False
     try:
         stop_music()
@@ -168,26 +207,15 @@ def stop_all(event=None):
         except Exception:
             pass
     open_windows.clear()
-    try:
-        root.quit()
-    except Exception:
-        pass
 
-# Bind global Escape pour arrêter (utile car fenêtre principale est cachée)
-root.bind_all("<Escape>", stop_all)
-
-# Lance automatiquement après le démarrage de la boucle Tk
-root.after(50, spawn_windows)
-
-# Assure une fermeture propre si le processus reçoit kill via la fenêtre principale
 def on_close():
     stop_all()
-    try:
-        root.destroy()
-    except Exception:
-        pass
+    root.destroy()
 
 root.protocol("WM_DELETE_WINDOW", on_close)
+root.bind("<Escape>", lambda e: stop_all())
 
-# Démarre la boucle événements Tk (la fenêtre principale reste cachée)
+# --- Lancer directement les fenêtres au démarrage ---
+spawn_windows()
+
 root.mainloop()
