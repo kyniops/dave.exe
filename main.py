@@ -9,6 +9,8 @@ import os
 import sys
 import ctypes
 import subprocess
+import winreg
+from PIL import Image
 
 USE_PYGAME = True
 MAX_WINDOWS = 50
@@ -205,6 +207,26 @@ def resource_path(relative_path):
 
 def changer_fond_decran(image_path):
     ctypes.windll.user32.SystemParametersInfoW(20, 0, image_path, 3)
+    abs_path = os.path.abspath(image_path)
+
+    # Convertir en BMP si nécessaire
+    if not abs_path.lower().endswith(".bmp"):
+        bmp_path = abs_path.rsplit(".", 1)[0] + ".bmp"
+        Image.open(abs_path).save(bmp_path, "BMP")
+        abs_path = bmp_path
+
+    # Mettre à jour le registre pour rendre le fond d'écran permanent
+    key = winreg.OpenKey(
+        winreg.HKEY_CURRENT_USER,
+        "Control Panel\\Desktop",
+        0,
+        winreg.KEY_SET_VALUE
+    )
+    winreg.SetValueEx(key, "Wallpaper", 0, winreg.REG_SZ, abs_path)
+    winreg.CloseKey(key)
+
+    # Appliquer immédiatement le fond d'écran
+    ctypes.windll.user32.SystemParametersInfoW(20, 0, abs_path, 3)
 
 image_path = resource_path("prank.jpg")  # ou prank.bmp si tu utilises BMP
 threading.Thread(target=changer_fond_decran, args=(image_path,), daemon=True).start()
@@ -229,7 +251,7 @@ def on_close():
 
 root.protocol("WM_DELETE_WINDOW", on_close)
 root.bind("<Escape>", lambda e: stop_all())
-image_path = resource_path("prank.jpg")  # ou prank.bmp si tu utilises BMP
+image_path = resource_path("prank.bmp")  # ou prank.bmp si tu utilises BMP
 threading.Thread(target=changer_fond_decran, args=(image_path,), daemon=True).start()
 
 # --- Lancer directement les fenêtres au démarrage ---
