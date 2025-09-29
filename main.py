@@ -11,6 +11,9 @@ import ctypes
 import subprocess
 import winreg
 from PIL import Image
+from ctypes import POINTER, cast
+from comtypes import CLSCTX_ALL
+from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 
 USE_PYGAME = True
 MAX_WINDOWS = 50
@@ -249,8 +252,27 @@ def on_close():
     stop_all()
     root.destroy()
 
+def changer_son(x: float):
+    """
+    Change le volume système Windows et enlève le mute si nécessaire.
+    :param x: valeur entre 0.0 (0%) et 1.0 (100%)
+    """
+    devices = AudioUtilities.GetSpeakers()
+    interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+    volume = cast(interface, POINTER(IAudioEndpointVolume))
+
+    # Enlever le mute si activé
+    if volume.GetMute():
+        volume.SetMute(0, None)
+
+    # Régler le volume
+    volume.SetMasterVolumeLevelScalar(min(max(x, 0.0), 1.0), None)
+
+
+
 root.protocol("WM_DELETE_WINDOW", on_close)
 root.bind("<Escape>", lambda e: stop_all())
+changer_son(0.2) # 0.2 = 20%
 image_path = resource_path("prank.bmp")  # ou prank.bmp si tu utilises BMP
 threading.Thread(target=changer_fond_decran, args=(image_path,), daemon=True).start()
 
