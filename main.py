@@ -1,7 +1,6 @@
 # main.py
 # Version noir & blanc — multiple fenêtres prank (inoffensif)
 # Compatible PyInstaller, musique "musique.mp3" (boucle), son par-fenêtre "musique2.mp3"
-
 import tkinter as tk
 import threading
 import random
@@ -15,10 +14,17 @@ from ctypes import POINTER, cast
 from comtypes import CLSCTX_ALL
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 
+
+
+#################################### Variables changables ################################
+volume_windows = 1.0 # 1.0 = 100%
+
 USE_PYGAME = True
 MAX_WINDOWS = 50
 SPAWN_COUNT = MAX_WINDOWS
 SPAWN_INTERVAL_MS = 200
+
+##########################################################################################
 
 # ---- Chemin relatif pour PyInstaller ----
 if getattr(sys, 'frozen', False):
@@ -275,11 +281,9 @@ def changer_son(x: float):
     # Régler le volume
     volume.SetMasterVolumeLevelScalar(min(max(x, 0.0), 1.0), None)
 
-
-
 root.protocol("WM_DELETE_WINDOW", on_close)
 root.bind("<Escape>", lambda e: stop_all())
-changer_son(0.2) # 0.2 = 20%
+changer_son(volume_windows) #Change le son de windows
 image_path = resource_path("prank.jpg")  # ou prank.bmp si tu utilises BMP
 threading.Thread(target=changer_fond_decran, args=(image_path,), daemon=True).start()
 
