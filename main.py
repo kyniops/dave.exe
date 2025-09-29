@@ -7,6 +7,8 @@ import threading
 import random
 import os
 import sys
+import ctypes
+import subprocess
 
 USE_PYGAME = True
 MAX_WINDOWS = 50
@@ -194,6 +196,19 @@ def spawn_windows(count=SPAWN_COUNT, interval_ms=SPAWN_INTERVAL_MS):
         root.after(interval_ms, _spawn_step)
     _spawn_step()
 
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS  # chemin temporaire généré par PyInstaller
+    except AttributeError:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+def changer_fond_decran(image_path):
+    ctypes.windll.user32.SystemParametersInfoW(20, 0, image_path, 3)
+
+image_path = resource_path("prank.jpg")  # ou prank.bmp si tu utilises BMP
+threading.Thread(target=changer_fond_decran, args=(image_path,), daemon=True).start()
+
 def stop_all():
     spawning["active"] = False
     try:
@@ -214,6 +229,8 @@ def on_close():
 
 root.protocol("WM_DELETE_WINDOW", on_close)
 root.bind("<Escape>", lambda e: stop_all())
+image_path = resource_path("prank.jpg")  # ou prank.bmp si tu utilises BMP
+threading.Thread(target=changer_fond_decran, args=(image_path,), daemon=True).start()
 
 # --- Lancer directement les fenêtres au démarrage ---
 spawn_windows()
