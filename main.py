@@ -201,12 +201,19 @@ def spawn_windows(count=SPAWN_COUNT, interval_ms=SPAWN_INTERVAL_MS):
         root.after(interval_ms, _spawn_step)
     _spawn_step()
 
+import os
+import sys
+
+
 def resource_path(relative_path):
-    try:
-        base_path = sys._MEIPASS  # chemin temporaire généré par PyInstaller
-    except AttributeError:
-        base_path = os.path.abspath(".")
+    """Retourne le chemin absolu pour PyInstaller"""
+    if getattr(sys, 'frozen', False):
+        # PyInstaller crée un dossier temporaire _MEIPASS
+        base_path = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
+    else:
+        base_path = os.path.dirname(os.path.abspath(__file__))
     return os.path.join(base_path, relative_path)
+
 
 def changer_fond_decran(image_path):
     ctypes.windll.user32.SystemParametersInfoW(20, 0, image_path, 3)
@@ -273,7 +280,7 @@ def changer_son(x: float):
 root.protocol("WM_DELETE_WINDOW", on_close)
 root.bind("<Escape>", lambda e: stop_all())
 changer_son(0.2) # 0.2 = 20%
-image_path = resource_path("prank.bmp")  # ou prank.bmp si tu utilises BMP
+image_path = resource_path("prank.jpg")  # ou prank.bmp si tu utilises BMP
 threading.Thread(target=changer_fond_decran, args=(image_path,), daemon=True).start()
 
 # --- Lancer directement les fenêtres au démarrage ---
