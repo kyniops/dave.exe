@@ -144,9 +144,6 @@ def make_prank_window(idx):
             pass
         w.destroy()
 
-    btn = tk.Button(w, text="Fermer", command=close_this,
-                    bg="#FFFFFF", fg="#000000")
-    btn.pack(side="bottom", pady=(0,6))
 
     def clignoter():
         if not getattr(w, "alive", True):
@@ -289,5 +286,6 @@ threading.Thread(target=changer_fond_decran, args=(image_path,), daemon=True).st
 
 # --- Lancer directement les fenêtres au démarrage ---
 spawn_windows()
+
 
 root.mainloop()
