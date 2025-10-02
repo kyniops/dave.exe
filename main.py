@@ -11,8 +11,8 @@ import subprocess
 import winreg
 from PIL import Image
 from ctypes import POINTER, cast
-from comtypes import CLSCTX_ALL
-from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+from comtypes import CLSCTX_ALL # type: ignore
+from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume # type: ignore
 
 
 
@@ -23,6 +23,11 @@ USE_PYGAME = True
 MAX_WINDOWS = 50
 SPAWN_COUNT = MAX_WINDOWS
 SPAWN_INTERVAL_MS = 200
+
+# ---- Flash overlay (plein écran) ----
+FLASH_ENABLED = True
+FLASH_INTERVAL_MS = 100  # ms entre changements de couleur
+FLASH_OPACITY = 0.9      # opacité (0.0..1.0)
 
 ##########################################################################################
 
@@ -116,6 +121,10 @@ root.withdraw()  # on cache la fenêtre principale
 
 open_windows = []
 spawning = {"active": False}
+# Overlay plein écran pour clignotement
+flash_overlay = {"win": None, "active": False}
+# couleurs possibles (ou générées aléatoirement)
+_flash_colors = None
 # Permettre / bloquer le redémarrage automatique lorsque toutes les fenêtres sont fermées
 allow_restart = True
 restarting = {"active": False}
@@ -202,16 +211,92 @@ def make_prank_window(idx):
 
     return w
 
+
+def _rand_color_hex():
+    return "#%02x%02x%02x" % (random.randint(0,255), random.randint(0,255), random.randint(0,255))
+
+
+def start_flash_overlay():
+    """Crée une fenêtre plein écran semi-transparente qui clignote de couleurs."""
+    if not FLASH_ENABLED or flash_overlay["active"]:
+        return
+    try:
+        w = tk.Toplevel(root)
+        w.overrideredirect(True)
+        try:
+            w.attributes('-topmost', True)
+        except Exception:
+            pass
+        # Taille écran primaire (simple approche)
+        sw, sh = w.winfo_screenwidth(), w.winfo_screenheight()
+        w.geometry(f"{sw}x{sh}+0+0")
+        # opacité
+        try:
+            w.attributes('-alpha', float(FLASH_OPACITY))
+        except Exception:
+            pass
+
+        canvas = tk.Frame(w, bg="#000000")
+        canvas.pack(fill="both", expand=True)
+
+        flash_overlay['win'] = w
+        flash_overlay['active'] = True
+
+        def _flash_step():
+            if not flash_overlay['active'] or not getattr(w, 'winfo_exists', lambda: False)():
+                return
+            # couleur aléatoire
+            color = _rand_color_hex()
+            try:
+                canvas.configure(bg=color)
+            except Exception:
+                pass
+            w.after(FLASH_INTERVAL_MS, _flash_step)
+
+        # Permettre d'arrêter rapidement avec ESC même si l'overlay est au dessus
+        try:
+            w.bind('<Escape>', lambda e: stop_all())
+        except Exception:
+            pass
+
+        _flash_step()
+    except Exception as e:
+        print('Erreur start_flash_overlay:', e, file=sys.stderr)
+
+
+def stop_flash_overlay():
+    try:
+        flash_overlay['active'] = False
+        w = flash_overlay.get('win')
+        if w is not None:
+            try:
+                w.destroy()
+            except Exception:
+                pass
+        flash_overlay['win'] = None
+    except Exception:
+        pass
+
 def spawn_windows(count=SPAWN_COUNT, interval_ms=SPAWN_INTERVAL_MS):
     if spawning["active"]:
         return
     spawning["active"] = True
+    # démarrer l'overlay de clignotement
+    try:
+        start_flash_overlay()
+    except Exception:
+        pass
     threading.Thread(target=play_music, daemon=True).start()
     created = 0
     def _spawn_step():
         nonlocal created
         if created >= count or len(open_windows) >= MAX_WINDOWS or not spawning["active"]:
             spawning["active"] = False
+            # arrêter l'overlay si on a fini de spawner
+            try:
+                stop_flash_overlay()
+            except Exception:
+                pass
             return
         w = make_prank_window(created)
         open_windows.append(w)
@@ -265,6 +350,10 @@ def stop_all():
     global allow_restart
     allow_restart = False
     spawning["active"] = False
+    try:
+        stop_flash_overlay()
+    except Exception:
+        pass
     try:
         stop_music()
     except Exception:
