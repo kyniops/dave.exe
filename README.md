@@ -20,6 +20,10 @@ pip install pillow comtypes pycaw
 ```
 .PY TO .EXE:
 ```bash
-pyinstaller --onefile --noconsole --add-data "musique.mp3;." --add-data "musique2.mp3;." --add-data "prank.jpg;." --icon=icone.ico main.py 
+pyinstaller --onefile --noconsole --add-data "musique.mp3;." --add-data "musique2.mp3;." --add-data "prank.jpg;." --icon=icone.ico main.py
+```
+ou
+```bash
+py -m pip install --user pyinstaller; py -m PyInstaller --onefile --noconsole --add-data "musique.mp3;." --add-data "musique2.MP3;." --add-data "prank.jpg;." --icon=icone.ico main.py
 
 
