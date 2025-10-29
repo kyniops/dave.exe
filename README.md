@@ -18,7 +18,8 @@ Vous pouvez installer toutes les dépendances avec `pip` :
 ```bash
 pip install pillow comtypes pycaw
 ```
-.PY TO .EXE:
+## PY TO EXE
+
 ```bash
 pyinstaller --onefile --noconsole --add-data "musique.mp3;." --add-data "musique2.mp3;." --add-data "prank.jpg;." --icon=icone.ico main.py
 ```
